@@ -1,4 +1,4 @@
-import { Component, forwardRef } from '@angular/core';
+import { Component, forwardRef, OnInit } from '@angular/core';
 import { ControlValueAccessor, FormGroup, FormBuilder, NG_VALUE_ACCESSOR, Validators, NgControl, FormControl, NG_VALIDATORS, AbstractControl, ValidationErrors } from '@angular/forms';
 import { FormConfig } from '../app.component';
 
@@ -21,25 +21,24 @@ export const ADDRESS_FORM_CONFIG: FormConfig<Address> = {
 @Component({
   selector: 'app-address',
   templateUrl: './address.component.html',
-  providers: [{
-    provide: NG_VALUE_ACCESSOR,
-    useExisting: forwardRef(() => AddressComponent),
-    multi: true
-  },
-  {
-    provide: NG_VALIDATORS,
-    useExisting: forwardRef(() => AddressComponent),
-    multi: true
-  }
-  ],
 })
-export class AddressComponent implements ControlValueAccessor {
+export class AddressComponent implements ControlValueAccessor, OnInit {
 
   touched = false;
 
   form = this.fb.group(ADDRESS_FORM_CONFIG);
 
-  constructor(private readonly fb: FormBuilder) { }
+  constructor(
+    public ngControl: NgControl,
+    private readonly fb: FormBuilder) {
+      ngControl.valueAccessor = this;
+    }
+
+  ngOnInit() {
+    const control = this.ngControl.control;
+    control.setValidators(this.validate);
+    control.updateValueAndValidity();
+  }
 
 	writeValue(value: Address): void {
 		if (value) {
@@ -52,17 +51,17 @@ export class AddressComponent implements ControlValueAccessor {
 	}
 
 	registerOnTouched(fn: () => void) {
-    // This is never triggered
-		this.onTouched = () => this.touched = true;
+		this.onTouched = () => console.log("hello");//Object.keys(this.form.controls).map(k => this.form.controls[k].markAsTouched());
 	}
 
-  validate(): ValidationErrors {
-    return this.collectErrors(this.form);
+  validate = (): ValidationErrors => { 
+    const errors = this.collectErrors(this.form);
+    return errors && errors.length > 0 ? errors : null;
   }
 
 	onTouched: () => void = () => {};
 
-  private collectErrors(ctrl: FormGroup): ValidationErrors {
+  collectErrors(ctrl: FormGroup): ValidationErrors {
     return Object.keys(ctrl.controls).reduce((a, k) => ctrl.controls[k].errors ? a.concat(ctrl.controls[k].errors) : a, []) as ValidationErrors;
   }
 }
